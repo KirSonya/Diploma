@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ExtractWithValueFunctionNode = exports.ExtractRegexFunctionNode = exports.NowFunctionNode = exports.PresentFunctionNode = void 0;
+exports.StartOfPeriodNode = exports.DateFunctionNode = exports.DateComparisonNode = exports.ExtractWithValueFunctionNode = exports.ExtractRegexFunctionNode = exports.NowFunctionNode = exports.PresentFunctionNode = void 0;
 // СЕЙЧАС()
 class PresentFunctionNode {
     constructor() {
@@ -35,3 +35,40 @@ class ExtractWithValueFunctionNode {
     }
 }
 exports.ExtractWithValueFunctionNode = ExtractWithValueFunctionNode;
+// Период = ДАТА(1992, 11, 26) 
+class DateComparisonNode {
+    constructor(operator, year, month, day) {
+        this.type = 'DateComparison';
+        this.operator = operator;
+        this.year = year;
+        this.month = month;
+        this.day = day;
+    }
+    formatDate() {
+        return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
+    }
+}
+exports.DateComparisonNode = DateComparisonNode;
+// ДатаОбращения = ДАТА(1992, 11, 26) 
+class DateFunctionNode {
+    constructor(year, month, day, operator) {
+        this.type = 'DateFunction';
+        this.year = year;
+        this.month = month;
+        this.day = day;
+        this.operator = operator; // Инициализируем оператор
+    }
+    formatDate() {
+        return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
+    }
+}
+exports.DateFunctionNode = DateFunctionNode;
+// НАЧАЛОПЕРИОДА(Период, День) 
+class StartOfPeriodNode {
+    constructor(period, unit) {
+        this.type = 'StartOfPeriod';
+        this.period = period;
+        this.unit = unit;
+    }
+}
+exports.StartOfPeriodNode = StartOfPeriodNode;

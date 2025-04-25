@@ -5,17 +5,19 @@ const parser_1 = require("./parser");
 const translator_1 = require("./translator");
 // Примеры входных выражений
 const inputs = [
-    "ИЗВЛЕЧЬ (Период, ГОД)",
-    "СЕЙЧАС()",
-    "ИЗВЛЕЧЬ (СЕЙЧАС(), ГОД)",
-    "ИЗВЛЕЧЬ (СЕЙЧАС(), ЧАС)",
-    "ИЗВЛЕЧЬ (Период, ЧАС) = 1"
+    "ИЗВЛЕЧЬ (СЕЙЧАС(), ДЕНЬ)",
+    "ИЗВЛЕЧЬ(Период, ГОД) < 2024",
+    "НАЧАЛОПЕРИОДА(Период, ГОД)",
+    "ДатаОбращения > ДАТА(1992, 11, 26)",
+    "Период <= ДАТА(1992, 11, 26)"
 ];
+// Выбор языка: 'ru' для русского, 'en' для английского
+const language = 'en';
 inputs.forEach(input => {
     const parser = new parser_1.Parser(input);
     try {
         const ast = parser.parse();
-        const translator = new translator_1.Translator(ast);
+        const translator = new translator_1.Translator(ast, language); // Передаем язык
         const result = translator.translate();
         console.log(`${input} -> ${result}`);
     }

@@ -53,3 +53,59 @@ export class ExtractWithValueFunctionNode implements ASTNode {
         this.comparisonOperator = comparisonOperator;
     }
 }
+    // Период = ДАТА(1992, 11, 26) 
+    export class DateComparisonNode implements ASTNode {
+        type: string;
+        operator: string;
+        year: number;
+        month: number;
+        day: number;
+
+        constructor(operator: string, year: number, month: number, day: number) {
+            this.type = 'DateComparison';
+            this.operator = operator;
+            this.year = year;
+            this.month = month;
+            this.day = day;
+        }
+
+        formatDate(): string {
+            return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
+        }
+    }
+
+    // ДатаОбращения = ДАТА(1992, 11, 26) 
+    export class DateFunctionNode implements ASTNode {
+    type: string;
+    year: number;
+    month: number;
+    day: number;
+    operator: string; // Добавим поле для оператора
+
+    constructor(year: number, month: number, day: number, operator: string) {
+        this.type = 'DateFunction';
+        this.year = year;
+        this.month = month;
+        this.day = day;
+        this.operator = operator; // Инициализируем оператор
+    }
+
+    formatDate(): string {
+        return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
+    }
+}
+
+// НАЧАЛОПЕРИОДА(Период, День) 
+export class StartOfPeriodNode implements ASTNode {
+    type: string;
+    period: string;
+    unit: string;
+
+    constructor(period: string, unit: string) {
+        this.type = 'StartOfPeriod';
+        this.period = period;
+        this.unit = unit;
+    }
+}
+
+    
