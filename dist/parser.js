@@ -1,73 +1,121 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
+exports.addEOFToken = addEOFToken;
 // parser.ts
-const ast_1 = require("./ast");
+const tokenizer_1 = require("./tokenizer");
 class Parser {
-    constructor(input) {
-        this.input = input.trim(); // Удаляем лишние пробелы
+    constructor(tokens) {
+        this.current = 0;
+        this.tokens = tokens;
+        this.tokens = [...tokens, tokenizer_1.Tokenizer.createEOFToken()];
     }
     parse() {
-        const present = /СЕЙЧАС\s*\(\s*\)/;
-        const nowRegex = /ИЗВЛЕЧЬ\s*\(\s*СЕЙЧАС\s*\(\s*\)\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)/;
-        const extractRegex = /ИЗВЛЕЧЬ\s*\(\s*Период\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)/;
-        const extractWithValueRegex = /ИЗВЛЕЧЬ\s*\(\s*([^\s,]+)\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)\s*(=|<|>|<=|>=)\s*([0-9]+)/;
-        const date = /Период\s*(=|<|>|<=|>=)\s*ДАТА\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})\s*\)/;
-        const dateRegex = /ДатаОбращения\s*([=<>]=?|<)\s*ДАТА\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})\s*\)/;
-        const startOfPeriodRegex = /НАЧАЛОПЕРИОДА\(([\wА-Яа-яЁё]+),\s*([\wА-Яа-яЁё]+)\)/i;
-        const nowMatch = this.input.match(nowRegex); // ИЗВЛЕЧЬ(СЕЙЧАС(), ...)
-        if (nowMatch) {
-            const unit = nowMatch[1]; // Тип единицы
-            //console.log(unit);
-            return new ast_1.NowFunctionNode(unit); // Создаем узел для NOW
+        return this.parseLogicalExpression();
+    }
+    parseLogicalExpression() {
+        let left = this.parseComparisonExpression();
+        while (this.matchToken('LOGICAL')) {
+            const operator = this.previous().value;
+            const right = this.parseComparisonExpression();
+            left = {
+                type: 'Logical',
+                left,
+                operator,
+                right
+            };
         }
-        const extractWithValueMatch = this.input.match(extractWithValueRegex); // ИЗВЛЕЧЬ(Период, ...) <= ...
-        if (extractWithValueMatch) {
-            const period = extractWithValueMatch[1].trim(); // Период
-            //console.log(period);
-            const unit = extractWithValueMatch[2]; // Тип единицы
-            //console.log(unit);
-            const comparisonOperator = extractWithValueMatch[3]; // Оператор сравнения
-            //console.log(comparisonOperator);
-            const value = extractWithValueMatch[4]; // Значение
-            //console.log(value);
-            return new ast_1.ExtractWithValueFunctionNode(period, unit, value, comparisonOperator);
+        return left;
+    }
+    parseComparisonExpression() {
+        let left = this.parsePrimaryExpression();
+        // Проверяем текущий токен на наличие оператора сравнения
+        while (this.matchToken('OPERATOR')) {
+            const operator = this.previous().value;
+            const right = this.parsePrimaryExpression();
+            left = {
+                type: 'Comparison',
+                left,
+                operator,
+                right
+            };
         }
-        const extractRegexMatch = this.input.match(extractRegex); // ИЗВЛЕЧЬ(Период, ...)
-        if (extractRegexMatch !== null) { // Проверяем, что extractRegexMatch не null
-            const unit = extractRegexMatch[1]; // Извлекаем единицу
-            return new ast_1.ExtractRegexFunctionNode(unit);
+        return left;
+    }
+    parsePrimaryExpression() {
+        if (this.matchToken('FUNCTION')) {
+            return this.parseFunctionCall();
         }
-        const presentMatch = this.input.match(present); // СЕЙЧАС()
-        if (presentMatch) {
-            return new ast_1.PresentFunctionNode();
+        if (this.matchToken('NUMBER') || this.matchToken('UNIT') || this.matchToken('IDENTIFIER')) {
+            return {
+                type: 'Literal',
+                value: this.previous().value
+            };
         }
-        // Период = ДАТА(1992, 11, 26) 
-        const dateP = this.input.match(date);
-        if (dateP) {
-            const operator = dateP[1]; // Сохраняем оператор
-            const year = parseInt(dateP[2], 10);
-            const month = parseInt(dateP[3], 10);
-            const day = parseInt(dateP[4], 10);
-            return new ast_1.DateComparisonNode(operator, year, month, day); // Создаем узел сравнения
+        if (this.matchToken('LPAREN')) {
+            const expr = this.parseLogicalExpression();
+            this.consume('RPAREN', "Ожидалась закрывающая скобка ')'");
+            return expr;
         }
-        // ДатаОбращения = ДАТА(1992, 11, 26) 
-        const dateMatch = this.input.match(dateRegex); // ДатаОбращения = ДАТА(1992, 11, 26) 
-        if (dateMatch) {
-            const operator = dateMatch[1]; // Получаем оператор
-            const year = parseInt(dateMatch[2], 10);
-            const month = parseInt(dateMatch[3], 10);
-            const day = parseInt(dateMatch[4], 10);
-            return new ast_1.DateFunctionNode(year, month, day, operator);
+        throw this.error(`Неожиданный токен: ${this.peek().type}`);
+    }
+    parseFunctionCall() {
+        const funcName = this.previous().value;
+        this.consume('LPAREN', "Ожидалась открывающая скобка '(' после имени функции");
+        const args = [];
+        while (!this.check('RPAREN') && !this.isAtEnd()) {
+            args.push(this.parseLogicalExpression());
+            if (!this.matchToken('COMMA')) {
+                break;
+            }
         }
-        // НАЧАЛОПЕРИОДА(Период, День) 
-        const startOfPeriodMatch = this.input.match(startOfPeriodRegex);
-        if (startOfPeriodMatch) {
-            const period = startOfPeriodMatch[1]; // Получаем период
-            const unit = startOfPeriodMatch[2]; // Получаем единицу времени
-            return new ast_1.StartOfPeriodNode(period, unit); // Создаем узел для начала периода
+        this.consume('RPAREN', "Ожидалась закрывающая скобка ')' после аргументов функции");
+        return {
+            type: 'FunctionCall',
+            funcName,
+            args
+        };
+    }
+    matchToken(...types) {
+        for (const type of types) {
+            if (this.check(type)) {
+                this.advance();
+                return true;
+            }
         }
-        throw new Error('Неверный формат входного выражения'); // Если не найдено совпадение
+        return false;
+    }
+    check(type) {
+        if (this.isAtEnd())
+            return false;
+        return this.peek().type === type;
+    }
+    advance() {
+        if (!this.isAtEnd())
+            this.current++;
+        return this.previous();
+    }
+    isAtEnd() {
+        return this.peek().type === 'EOF';
+    }
+    peek() {
+        return this.tokens[this.current];
+    }
+    previous() {
+        return this.tokens[this.current - 1];
+    }
+    consume(type, message) {
+        if (this.check(type))
+            return this.advance();
+        throw this.error(message);
+    }
+    error(message) {
+        const token = this.peek();
+        return new Error(`${message}. Найден токен: ${token.type} '${token.value}'`);
     }
 }
 exports.Parser = Parser;
+// Вспомогательная функция для создания EOF токена
+function addEOFToken(tokens) {
+    return [...tokens, { type: 'EOF', value: '' }];
+}

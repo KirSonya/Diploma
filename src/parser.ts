@@ -1,89 +1,170 @@
 // parser.ts
-import { ExtractRegexFunctionNode, ExtractWithValueFunctionNode, NowFunctionNode, 
-    PresentFunctionNode, DateComparisonNode, DateFunctionNode,
-    StartOfPeriodNode
- } from './ast';
+import { Token, Tokenizer, TokenType } from './tokenizer';
+
+export type ASTNode =
+  | FunctionCallNode
+  | ComparisonNode
+  | LogicalNode
+  | LiteralNode;
+
+export interface FunctionCallNode {
+  type: 'FunctionCall';
+  funcName: string;
+  args: ASTNode[];
+}
+
+export interface ComparisonNode {
+  type: 'Comparison';
+  left: ASTNode;
+  operator: string;
+  right: ASTNode;
+}
+
+export interface LogicalNode {
+  type: 'Logical';
+  left: ASTNode;
+  operator: string;
+  right: ASTNode;
+}
+
+export interface LiteralNode {
+  type: 'Literal';
+  value: string;
+}
 
 export class Parser {
-    private input: string;
+  private tokens: Token[];
+  private current = 0;
 
-    constructor(input: string) {
-        this.input = input.trim(); // Удаляем лишние пробелы
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+    this.tokens = [...tokens, Tokenizer.createEOFToken()];
+  }
+
+  public parse(): ASTNode {
+    return this.parseLogicalExpression();
+  }
+
+  private parseLogicalExpression(): ASTNode {
+    let left = this.parseComparisonExpression();
+
+    while (this.matchToken('LOGICAL')) {
+      const operator = this.previous().value;
+      const right = this.parseComparisonExpression();
+      left = {
+        type: 'Logical',
+        left,
+        operator,
+        right
+      } as LogicalNode;
     }
 
-    parse(): PresentFunctionNode | NowFunctionNode | ExtractRegexFunctionNode | 
-    ExtractWithValueFunctionNode | DateComparisonNode | DateFunctionNode |
-    StartOfPeriodNode {
-        const present = /СЕЙЧАС\s*\(\s*\)/;
-        const nowRegex = /ИЗВЛЕЧЬ\s*\(\s*СЕЙЧАС\s*\(\s*\)\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)/;
-        const extractRegex = /ИЗВЛЕЧЬ\s*\(\s*Период\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)/;
-        const extractWithValueRegex = /ИЗВЛЕЧЬ\s*\(\s*([^\s,]+)\s*,\s*(ГОД|КВАРТАЛ|МЕСЯЦ|НЕДЕЛЯ|ДЕНЬ|ЧАС|МИНУТА|СЕКУНДА|ДЕНЬНЕДЕЛИ|ДЕНЬГОДА)\s*\)\s*(=|<|>|<=|>=)\s*([0-9]+)/;
-        const date = /Период\s*(=|<|>|<=|>=)\s*ДАТА\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})\s*\)/;
-        const dateRegex = /ДатаОбращения\s*([=<>]=?|<)\s*ДАТА\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})\s*\)/;
-        const startOfPeriodRegex = /НАЧАЛОПЕРИОДА\(([\wА-Яа-яЁё]+),\s*([\wА-Яа-яЁё]+)\)/i;
+    return left;
+  }
 
+  private parseComparisonExpression(): ASTNode {
+    let left = this.parsePrimaryExpression();
 
-        const nowMatch = this.input.match(nowRegex); // ИЗВЛЕЧЬ(СЕЙЧАС(), ...)
-        if (nowMatch) {
-            const unit = nowMatch[1]; // Тип единицы
-            //console.log(unit);
-            return new NowFunctionNode(unit); // Создаем узел для NOW
-        }
-
-        const extractWithValueMatch = this.input.match(extractWithValueRegex); // ИЗВЛЕЧЬ(Период, ...) <= ...
-        if (extractWithValueMatch) {
-            const period = extractWithValueMatch[1].trim(); // Период
-            //console.log(period);
-            const unit = extractWithValueMatch[2]; // Тип единицы
-            //console.log(unit);
-            const comparisonOperator = extractWithValueMatch[3]; // Оператор сравнения
-            //console.log(comparisonOperator);
-            const value = extractWithValueMatch[4]; // Значение
-            //console.log(value);
-            return new ExtractWithValueFunctionNode(period, unit, value, comparisonOperator); 
-        }
-
-        const extractRegexMatch = this.input.match(extractRegex); // ИЗВЛЕЧЬ(Период, ...)
-        if (extractRegexMatch !== null) { // Проверяем, что extractRegexMatch не null
-            const unit = extractRegexMatch[1]; // Извлекаем единицу
-            return new ExtractRegexFunctionNode(unit); 
-        } 
-
-        const presentMatch = this.input.match(present); // СЕЙЧАС()
-        if(presentMatch) {
-            return new PresentFunctionNode();
-        }
-        
-        // Период = ДАТА(1992, 11, 26) 
-        const dateP = this.input.match(date);
-        if (dateP) {
-            const operator = dateP[1]; // Сохраняем оператор
-            const year = parseInt(dateP[2], 10);
-            const month = parseInt(dateP[3], 10);
-            const day = parseInt(dateP[4], 10);
-        
-            return new DateComparisonNode(operator, year, month, day); // Создаем узел сравнения
-        }
-
-        // ДатаОбращения = ДАТА(1992, 11, 26) 
-        const dateMatch = this.input.match(dateRegex); // ДатаОбращения = ДАТА(1992, 11, 26) 
-        if (dateMatch) {
-            const operator = dateMatch[1]; // Получаем оператор
-            const year = parseInt(dateMatch[2], 10);
-            const month = parseInt(dateMatch[3], 10);
-            const day = parseInt(dateMatch[4], 10);
-            
-            return new DateFunctionNode(year, month, day, operator);
-        }
-
-        // НАЧАЛОПЕРИОДА(Период, День) 
-        const startOfPeriodMatch = this.input.match(startOfPeriodRegex);
-        if (startOfPeriodMatch) {
-            const period = startOfPeriodMatch[1]; // Получаем период
-            const unit = startOfPeriodMatch[2]; // Получаем единицу времени
-            return new StartOfPeriodNode(period, unit); // Создаем узел для начала периода
-        }
-
-        throw new Error('Неверный формат входного выражения'); // Если не найдено совпадение
+    // Проверяем текущий токен на наличие оператора сравнения
+    while (this.matchToken('OPERATOR')) {
+        const operator = this.previous().value;
+        const right = this.parsePrimaryExpression();
+        left = {
+            type: 'Comparison',
+            left,
+            operator,
+            right
+        } as ComparisonNode;
     }
+
+    return left;
+}
+
+  private parsePrimaryExpression(): ASTNode {
+    if (this.matchToken('FUNCTION')) {
+      return this.parseFunctionCall();
+    }
+
+    if (this.matchToken('NUMBER') || this.matchToken('UNIT') || this.matchToken('IDENTIFIER')) {
+      return {
+        type: 'Literal',
+        value: this.previous().value
+      } as LiteralNode;
+    }
+
+    if (this.matchToken('LPAREN')) {
+      const expr = this.parseLogicalExpression();
+      this.consume('RPAREN', "Ожидалась закрывающая скобка ')'");
+      return expr;
+    }
+
+    throw this.error(`Неожиданный токен: ${this.peek().type}`);
+  }
+
+  private parseFunctionCall(): FunctionCallNode {
+    const funcName = this.previous().value;
+    this.consume('LPAREN', "Ожидалась открывающая скобка '(' после имени функции");
+
+    const args: ASTNode[] = [];
+    while (!this.check('RPAREN') && !this.isAtEnd()) {
+      args.push(this.parseLogicalExpression());
+      if (!this.matchToken('COMMA')) {
+        break;
+      }
+    }
+
+    this.consume('RPAREN', "Ожидалась закрывающая скобка ')' после аргументов функции");
+    return {
+      type: 'FunctionCall',
+      funcName,
+      args
+    };
+  }
+
+  private matchToken(...types: TokenType[]): boolean {
+    for (const type of types) {
+      if (this.check(type)) {
+        this.advance();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private check(type: TokenType): boolean {
+    if (this.isAtEnd()) return false;
+    return this.peek().type === type;
+  }
+
+  private advance(): Token {
+    if (!this.isAtEnd()) this.current++;
+    return this.previous();
+  }
+
+  private isAtEnd(): boolean {
+    return this.peek().type === 'EOF';
+  }
+
+  private peek(): Token {
+    return this.tokens[this.current];
+  }
+
+  private previous(): Token {
+    return this.tokens[this.current - 1];
+  }
+
+  private consume(type: TokenType, message: string): Token {
+    if (this.check(type)) return this.advance();
+    throw this.error(message);
+  }
+
+  private error(message: string): Error {
+    const token = this.peek();
+    return new Error(`${message}. Найден токен: ${token.type} '${token.value}'`);
+  }
+}
+
+// Вспомогательная функция для создания EOF токена
+export function addEOFToken(tokens: Token[]): Token[] {
+  return [...tokens, { type: 'EOF', value: '' }];
 }

@@ -1,74 +1,67 @@
 "use strict";
+// ast.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StartOfPeriodNode = exports.DateFunctionNode = exports.DateComparisonNode = exports.ExtractWithValueFunctionNode = exports.ExtractRegexFunctionNode = exports.NowFunctionNode = exports.PresentFunctionNode = void 0;
-// СЕЙЧАС()
-class PresentFunctionNode {
-    constructor() {
-        this.type = 'PresentFunction';
+exports.ASTUtils = exports.ASTFactory = void 0;
+// Фабрики для создания узлов AST
+exports.ASTFactory = {
+    createPresentFunction() {
+        return { type: 'PresentFunction' };
+    },
+    createExtractFunction(source, unit) {
+        return { type: 'ExtractFunction', source, unit };
+    },
+    createDateFunction(year, month, day, hour, minute, second) {
+        return {
+            type: 'DateFunction',
+            year, month, day,
+            hour, minute, second
+        };
+    },
+    createStartOfPeriod(date, unit) {
+        return { type: 'StartOfPeriod', date, unit };
+    },
+    createEndOfPeriod(date, unit) {
+        return { type: 'EndOfPeriod', date, unit };
+    },
+    createInFunction(extract, values) {
+        return { type: 'InFunction', extract, values };
+    },
+    createAddFunction(date, unit, amount) {
+        return { type: 'AddFunction', date, unit, amount };
+    },
+    createFunctionCall(funcName, args) {
+        return { type: 'FunctionCall', funcName, args };
+    },
+    createComparison(left, operator, right) {
+        return { type: 'Comparison', left, operator, right };
+    },
+    createLogical(left, operator, right) {
+        return { type: 'Logical', left, operator, right };
+    },
+    createLiteral(value) {
+        return { type: 'Literal', value };
+    },
+    createIdentifier(name) {
+        return { type: 'Identifier', name };
     }
-}
-exports.PresentFunctionNode = PresentFunctionNode;
-//  ИЗВЛЕЧЬ(СЕЙЧАС(), ...)
-class NowFunctionNode {
-    constructor(unit) {
-        this.type = 'NowFunction';
-        this.unit = unit;
+};
+// Вспомогательные функции для работы с AST
+exports.ASTUtils = {
+    isFunctionCall(node, funcName) {
+        return node.type === 'FunctionCall' &&
+            (funcName ? node.funcName === funcName : true);
+    },
+    isComparison(node) {
+        return node.type === 'Comparison';
+    },
+    isLogical(node) {
+        return node.type === 'Logical';
+    },
+    isLiteral(node) {
+        return node.type === 'Literal';
+    },
+    isIdentifier(node, name) {
+        return node.type === 'Identifier' &&
+            (name ? node.name === name : true);
     }
-}
-exports.NowFunctionNode = NowFunctionNode;
-//  ИЗВЛЕЧЬ(Период, ...)
-class ExtractRegexFunctionNode {
-    constructor(unit) {
-        this.type = 'ExtractRegexFunction';
-        this.unit = unit;
-    }
-}
-exports.ExtractRegexFunctionNode = ExtractRegexFunctionNode;
-// Фильтр: ИЗВЛЕЧЬ(Период, ...) = ...
-class ExtractWithValueFunctionNode {
-    constructor(period, unit, value, comparisonOperator) {
-        this.type = 'ExtractWithValueFunction';
-        this.period = period;
-        this.unit = unit;
-        this.value = value;
-        this.comparisonOperator = comparisonOperator;
-    }
-}
-exports.ExtractWithValueFunctionNode = ExtractWithValueFunctionNode;
-// Период = ДАТА(1992, 11, 26) 
-class DateComparisonNode {
-    constructor(operator, year, month, day) {
-        this.type = 'DateComparison';
-        this.operator = operator;
-        this.year = year;
-        this.month = month;
-        this.day = day;
-    }
-    formatDate() {
-        return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
-    }
-}
-exports.DateComparisonNode = DateComparisonNode;
-// ДатаОбращения = ДАТА(1992, 11, 26) 
-class DateFunctionNode {
-    constructor(year, month, day, operator) {
-        this.type = 'DateFunction';
-        this.year = year;
-        this.month = month;
-        this.day = day;
-        this.operator = operator; // Инициализируем оператор
-    }
-    formatDate() {
-        return `${String(this.day).padStart(2, '0')}.${String(this.month).padStart(2, '0')}.${this.year}`;
-    }
-}
-exports.DateFunctionNode = DateFunctionNode;
-// НАЧАЛОПЕРИОДА(Период, День) 
-class StartOfPeriodNode {
-    constructor(period, unit) {
-        this.type = 'StartOfPeriod';
-        this.period = period;
-        this.unit = unit;
-    }
-}
-exports.StartOfPeriodNode = StartOfPeriodNode;
+};

@@ -1,32 +1,85 @@
 // index.ts
+import { Tokenizer } from './tokenizer';
 import { Parser } from './parser';
 import { Translator } from './translator';
 
-// Примеры входных выражений
-const inputs = [
-    "ИЗВЛЕЧЬ (СЕЙЧАС(), ДЕНЬ)",
-    "ИЗВЛЕЧЬ(Период, ГОД) < 2024",
-    "НАЧАЛОПЕРИОДА(Период, ГОД)",
-    "ДатаОбращения > ДАТА(1992, 11, 26)",
-    "Период <= ДАТА(1992, 11, 26)"
+// Примеры входных выражений для тестирования
+const testFormulas = [
+    "ИЗВЛЕЧЬ (Период, ГОД)",
+    "ИЗВЛЕЧЬ (Период, КВАРТАЛ)",
+    "ИЗВЛЕЧЬ (Период, МЕСЯЦ) < 6",
+    "ИЗВЛЕЧЬ (Период, НЕДЕЛЯ) < 1",
+    "ИЗВЛЕЧЬ (Период, ДЕНЬ) > 13",
+    "ИЗВЛЕЧЬ (Период, ЧАС) < 1",
+    "ИЗВЛЕЧЬ (Период, МИНУТА) < 1",
+    "ИЗВЛЕЧЬ (Период, СЕКУНДА) > 1",
+    "ИЗВЛЕЧЬ (Период, ДЕНЬНЕДЕЛИ)",
+    "ИЗВЛЕЧЬ (Период, ДЕНЬГОДА) < 56"
+    /*
+  // Простые случаи
+  "СЕЙЧАС()",
+  "ИЗВЛЕЧЬ(Период, ГОД)",
+  "ИЗВЛЕЧЬ(СЕЙЧАС(), МЕСЯЦ)",
+  "ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)",
+  "ДАТА(2024, 5, 15)",
+  
+  // Сравнения
+  "ИЗВЛЕЧЬ(Период, ГОД) = 2024",
+  "ИЗВЛЕЧЬ(Период, МЕСЯЦ) < 6",
+  "Период <= ДАТА(2024, 12, 31)",
+  
+  // Логические операции
+  "ИЗВЛЕЧЬ(Период, ГОД) = 2023 ИЛИ ИЗВЛЕЧЬ(Период, ГОД) = 2024",
+  "ИЗВЛЕЧЬ(Период, ГОД) >= 2023 И ИЗВЛЕЧЬ(Период, МЕСЯЦ) <= 6",
+  
+  // Вложенные функции
+  "ДОБАВИТЬ(ДАТА(2024, 1, 1), МЕСЯЦ, 3)",
+  "НАЧАЛОПЕРИОДА(ДОБАВИТЬ(СЕЙЧАС(), ДЕНЬ, 7), НЕДЕЛЯ)",
+  "НАЧАЛОПЕРИОДА(ДОБАВИТЬ(СЕЙЧАС(), ДЕНЬ, 7), ГОД)",
+  "В(ИЗВЛЕЧЬ(Период, МЕСЯЦ), 1, 2, 3)",
+  
+  // Сложные случаи
+  "ИЗВЛЕЧЬ(Период, ГОД, МЕСЯЦ) = 202405",
+  "ДОБАВИТЬ(ДАТА(1992, 11, 26, 4, 30, 0), ЧАС, 2)" */
 ];
 
-// Выбор языка: 'ru' для русского, 'en' для английского
-const language = 'en'; 
+// Выбор языка: 'ru' или 'en'
+const language: 'ru' | 'en' = 'ru';
 
-inputs.forEach(input => {
-    const parser = new Parser(input);
-    try {
-        const ast = parser.parse();
-        const translator = new Translator(ast, language); // Передаем язык
-        const result = translator.translate();
-        console.log(`${input} -> ${result}`);
-    } catch (error) {
-        // Приведение типа error к Error
-        if (error instanceof Error) {
-            console.error(`Ошибка обработки "${input}": ${error.message}`);
-        } else {
-            console.error(`Ошибка обработки "${input}": ${String(error)}`);
-        }
-    } 
+// Функция для обработки одной формулы
+function processFormula(formula: string, lang: 'ru' | 'en' = 'ru'): string {
+  try {
+    // 1. Токенизация
+    const tokenizer = new Tokenizer(formula);
+    const tokens = tokenizer.tokenize();
+    
+    // 2. Парсинг
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
+    
+    // 3. Трансляция
+    const translator = new Translator(lang);
+    return translator.translate(ast);
+    
+  } catch (error) {
+    throw new Error(`Ошибка обработки формулы: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+// Вывод заголовка
+console.log('ТЕСТИРОВАНИЕ');
+console.log(`Выбран язык: ${language === 'ru' ? 'Русский' : 'Английский'}\n`);
+
+// Обработка и вывод результатов для каждой формулы
+testFormulas.forEach((formula, index) => {
+  console.log(`\n${'-'.repeat(60)}`);
+  console.log(`ФОРМУЛА ${index + 1}: ${formula}`);
+  
+  try {
+    const result = processFormula(formula, language);
+    console.log(`\n${result}\n`);
+    
+  } catch (error) {
+    console.error('❌ ОШИБКА:', error instanceof Error ? error.message : error);
+  }
 });
