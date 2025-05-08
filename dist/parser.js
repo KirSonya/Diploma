@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
 exports.addEOFToken = addEOFToken;
 // parser.ts
+const ast_1 = require("./ast");
 const tokenizer_1 = require("./tokenizer");
 class Parser {
     constructor(tokens) {
@@ -43,10 +44,13 @@ class Parser {
         return left;
     }
     parsePrimaryExpression() {
+        if (this.matchToken('IDENTIFIER')) {
+            return ast_1.ASTFactory.createIdentifier(this.previous().value);
+        }
         if (this.matchToken('FUNCTION')) {
             return this.parseFunctionCall();
         }
-        if (this.matchToken('NUMBER') || this.matchToken('UNIT') || this.matchToken('IDENTIFIER')) {
+        if (this.matchToken('NUMBER') || this.matchToken('UNIT')) {
             return {
                 type: 'Literal',
                 value: this.previous().value

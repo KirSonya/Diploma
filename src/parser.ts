@@ -1,11 +1,13 @@
 // parser.ts
+import { ASTFactory } from './ast';
 import { Token, Tokenizer, TokenType } from './tokenizer';
 
 export type ASTNode =
   | FunctionCallNode
   | ComparisonNode
   | LogicalNode
-  | LiteralNode;
+  | LiteralNode
+  | IdentifierNode;
 
 export interface FunctionCallNode {
   type: 'FunctionCall';
@@ -30,6 +32,11 @@ export interface LogicalNode {
 export interface LiteralNode {
   type: 'Literal';
   value: string;
+}
+
+export interface IdentifierNode {
+    type: 'Identifier';
+    name: string;
 }
 
 export class Parser {
@@ -81,11 +88,15 @@ export class Parser {
 }
 
   private parsePrimaryExpression(): ASTNode {
+    if (this.matchToken('IDENTIFIER')) {
+        return ASTFactory.createIdentifier(this.previous().value);
+    }
+
     if (this.matchToken('FUNCTION')) {
       return this.parseFunctionCall();
     }
 
-    if (this.matchToken('NUMBER') || this.matchToken('UNIT') || this.matchToken('IDENTIFIER')) {
+    if (this.matchToken('NUMBER') || this.matchToken('UNIT')) {
       return {
         type: 'Literal',
         value: this.previous().value

@@ -1,28 +1,68 @@
-// translator.test.ts
 import { Translator } from './translator';
-import { NowFunctionNode, ExtractWithValueFunctionNode, PresentFunctionNode } from './ast';
+import { Parser } from './parser';
+import { Tokenizer } from './tokenizer';
 
-describe('Translator', () => {
-    test('Перевод СЕЙЧАС()', () => {
-        const translator = new Translator(new PresentFunctionNode(), 'ru');
-        expect(translator.translate()).toBe('Текущий момент');
+// Упрощённая функция для тестирования перевода
+function testTranslation(formula: string, expected: string, lang: 'ru' | 'en' = 'ru') {
+  const tokenizer = new Tokenizer(formula);
+  const tokens = tokenizer.tokenize();
+  
+  const parser = new Parser(tokens);
+  const ast = parser.parse();
+  
+  const translator = new Translator(lang);
+  const result = translator.translate(ast);
+  
+  expect(result).toBe(expected);
+}
 
-        const translatorEn = new Translator(new PresentFunctionNode(), 'en');
-        expect(translatorEn.translate()).toBe('Current moment');
+describe('Formula Translation', () => {
+  const testCases = [
+    {
+      formula: 'ИЗВЛЕЧЬ(Период, ГОД) < ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)',
+      ru: 'до текущего года',
+      en: 'before current year'
+    },
+    {
+      formula: 'ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5',
+      ru: 'Май',
+      en: 'May'
+    },
+    {
+      formula: 'ИЗВЛЕЧЬ(Период, ДЕНЬ) <= 15',
+      ru: 'по 15.01',
+      en: 'by 15.01'
+    },
+    {
+      formula: 'ДАТА(2023, 5, 15)',
+      ru: '15.05.2023',
+      en: '15.05.2023'
+    },
+    {
+      formula: 'ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15',
+      ru: 'Май, до 15.01',
+      en: 'May, before 15.01'
+    }
+    /*{
+      formula: 'НАЧАЛОПЕРИОДА(СЕЙЧАС(), МЕСЯЦ)',
+      ru: 'Январь начала периода',
+      en: 'Start of current month'
+    }*/
+  ];
+
+  describe('Russian translations', () => {
+    testCases.forEach(({formula, ru}) => {
+      test(`"${formula}" → "${ru}"`, () => {
+        testTranslation(formula, ru, 'ru');
+      });
     });
+  });
 
-    test('Перевод ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)', () => {
-        const ast = new NowFunctionNode('ГОД');
-        const translator = new Translator(ast, 'ru');
-        expect(translator.translate()).toBe('Текущий год');
-        
-        const translatorEn = new Translator(ast, 'en');
-        expect(translatorEn.translate()).toBe('Current year');
+  describe('English translations', () => {
+    testCases.forEach(({formula, en}) => {
+      test(`"${formula}" → "${en}"`, () => {
+        testTranslation(formula, en, 'en');
+      });
     });
-
-    test('Перевод с некорректным оператором', () => {
-        const ast = new ExtractWithValueFunctionNode('Период', 'ГОД', '2023', '>');
-        const translator = new Translator(ast, 'ru');
-        expect(translator.translate()).toContain('после');
-    });
+  });
 });

@@ -13,13 +13,20 @@ export type ASTNode =
   | StartOfPeriodNode
   | EndOfPeriodNode
   | InFunctionNode
-  | AddFunctionNode;
+  | AddFunctionNode
+  | NumericLiteralNode;
 
 // Базовый интерфейс для всех узлов
 interface BaseASTNode {
   type: string;
 }
 
+// Узел идентификатора
+export interface IdentifierNode extends BaseASTNode {
+    type: 'Identifier';
+    name: string;
+}
+  
 // Функция СЕЙЧАС()
 export interface PresentFunctionNode extends BaseASTNode {
   type: 'PresentFunction';
@@ -98,14 +105,14 @@ export interface LogicalNode extends BaseASTNode {
 // Узел литерала (число, строка)
 export interface LiteralNode extends BaseASTNode {
   type: 'Literal';
-  value: string | number;
+  value: string;
 }
 
-// Узел идентификатора
-export interface IdentifierNode extends BaseASTNode {
-  type: 'Identifier';
-  name: string;
-}
+// Добавим NumericLiteralNode для числовых литералов
+export interface NumericLiteralNode extends BaseASTNode {
+    type: 'NumericLiteral';
+    value: number;
+  }
 
 // Вспомогательные типы
 export type ComparisonOperator = '=' | '<' | '>' | '<=' | '>=';
@@ -169,12 +176,31 @@ export const ASTFactory = {
     return { type: 'Logical', left, operator, right };
   },
 
-  createLiteral(value: string | number): LiteralNode {
+  createLiteral(value: string): LiteralNode {
     return { type: 'Literal', value };
   },
 
   createIdentifier(name: string): IdentifierNode {
     return { type: 'Identifier', name };
+  },
+  /*createDateFromNodes(yearNode: ASTNode, monthNode: ASTNode, dayNode: ASTNode): DateFunctionNode {
+    if (!ASTUtils.isLiteral(yearNode) || !ASTUtils.isLiteral(monthNode) || !ASTUtils.isLiteral(dayNode)) {
+        throw new Error('Аргументы ДАТА должны быть литералами');
+    }
+    
+    return {
+        type: 'DateFunction',
+        year: Number(yearNode.value),
+        month: Number(monthNode.value),
+        day: Number(dayNode.value)
+    };
+},*/
+createStringLiteral(value: string): LiteralNode {
+    return { type: 'Literal', value };
+  },
+  
+  createNumericLiteral(value: number): NumericLiteralNode {
+    return { type: 'NumericLiteral', value };
   }
 };
 
@@ -193,12 +219,23 @@ export const ASTUtils = {
     return node.type === 'Logical';
   },
 
-  isLiteral(node: ASTNode): node is LiteralNode {
+  isNumericLiteral(node: ASTNode): node is NumericLiteralNode {
+    return node.type === 'NumericLiteral';
+  },
+  
+  isStringLiteral(node: ASTNode): node is LiteralNode {
     return node.type === 'Literal';
   },
 
   isIdentifier(node: ASTNode, name?: string): node is IdentifierNode {
     return node.type === 'Identifier' && 
       (name ? (node as IdentifierNode).name === name : true);
-  }
+  },
+  isPresentFunction(node: ASTNode): node is PresentFunctionNode {
+      return node.type === 'PresentFunction';
+    },
+
+    isExtractFunction(node: ASTNode): node is ExtractFunctionNode {
+        return node.type === 'ExtractFunction';
+    }
 };

@@ -43,6 +43,24 @@ exports.ASTFactory = {
     },
     createIdentifier(name) {
         return { type: 'Identifier', name };
+    },
+    /*createDateFromNodes(yearNode: ASTNode, monthNode: ASTNode, dayNode: ASTNode): DateFunctionNode {
+      if (!ASTUtils.isLiteral(yearNode) || !ASTUtils.isLiteral(monthNode) || !ASTUtils.isLiteral(dayNode)) {
+          throw new Error('Аргументы ДАТА должны быть литералами');
+      }
+      
+      return {
+          type: 'DateFunction',
+          year: Number(yearNode.value),
+          month: Number(monthNode.value),
+          day: Number(dayNode.value)
+      };
+  },*/
+    createStringLiteral(value) {
+        return { type: 'Literal', value };
+    },
+    createNumericLiteral(value) {
+        return { type: 'NumericLiteral', value };
     }
 };
 // Вспомогательные функции для работы с AST
@@ -57,11 +75,20 @@ exports.ASTUtils = {
     isLogical(node) {
         return node.type === 'Logical';
     },
-    isLiteral(node) {
+    isNumericLiteral(node) {
+        return node.type === 'NumericLiteral';
+    },
+    isStringLiteral(node) {
         return node.type === 'Literal';
     },
     isIdentifier(node, name) {
         return node.type === 'Identifier' &&
             (name ? node.name === name : true);
+    },
+    isPresentFunction(node) {
+        return node.type === 'PresentFunction';
+    },
+    isExtractFunction(node) {
+        return node.type === 'ExtractFunction';
     }
 };

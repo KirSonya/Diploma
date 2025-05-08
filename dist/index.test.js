@@ -1,18 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// index.test.ts
-const parser_1 = require("./parser");
-const translator_1 = require("./translator");
-describe('Интеграционное тестирование', () => {
-    const inputs = [
-        "НАЧАЛОПЕРИОДА(Период, ГОД)",
-        "ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)"
-    ];
-    test.each(inputs)('Проверка интеграции для %s', (input) => {
-        const parser = new parser_1.Parser(input);
-        const ast = parser.parse();
-        const translator = new translator_1.Translator(ast, 'ru');
-        const result = translator.translate();
-        expect(result).toBeDefined();
+const index_1 = require("./index");
+describe('processFormula', () => {
+    test('should process simple comparison in Russian', () => {
+        const result = (0, index_1.processFormula)('ИЗВЛЕЧЬ(Период, ГОД) < 2023', 'ru');
+        expect(result).toBe('до 2023');
+    });
+    test('should process month comparison in Russian', () => {
+        const result = (0, index_1.processFormula)('ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5', 'ru');
+        expect(result).toBe('Май');
+    });
+    test('should process logical AND in Russian', () => {
+        const result = (0, index_1.processFormula)('ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15', 'ru');
+        expect(result).toBe('Май, до 15.01');
+    });
+    test('should process simple comparison in English', () => {
+        const result = (0, index_1.processFormula)('ИЗВЛЕЧЬ(Период, ГОД) < 2023', 'en');
+        expect(result).toBe('before 2023');
+    });
+    test('should throw error for invalid formula', () => {
+        expect(() => (0, index_1.processFormula)('ИЗВЛЕЧЬ(Период, ГОД < 2023', 'ru'))
+            .toThrow('Ошибка обработки формулы');
     });
 });

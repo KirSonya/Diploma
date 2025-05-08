@@ -138,14 +138,182 @@ class Translator {
         return this.getSimpleUnitName(unit);
     }
     translateComparison(node) {
+        // Проверяем случай ИЗВЛЕЧЬ(Период) <оператор> ИЗВЛЕЧЬ(СЕЙЧАС())
+        if (node.left.type === 'FunctionCall' &&
+            node.left.funcName === 'ИЗВЛЕЧЬ' &&
+            node.right.type === 'FunctionCall' &&
+            node.right.funcName === 'ИЗВЛЕЧЬ') {
+            return this.translateExtractComparison(node.left, node.operator, node.right);
+        }
+        const operator = node.operator;
+        // Добавляем явную проверку типа для node.left
+        if (node.left.type === 'Identifier' && node.left.name === 'Период') {
+            if (node.right.type === 'FunctionCall' && node.right.funcName === 'НАЧАЛОПЕРИОДА') {
+                return this.formatPeriodStartComparison(node.operator, node.right);
+            }
+        }
+        // Обработка ИЗВЛЕЧЬ(Период, единица) оператор значение
+        if (node.left.type === 'FunctionCall' && node.left.funcName === 'ИЗВЛЕЧЬ') {
+            const unit = this.getUnitName(node.left.args[1]);
+            const value = this.translate(node.right);
+            const numValue = parseInt(value);
+            // Форматируем значение в зависимости от единицы измерения
+            let formattedValue = this.formatExtractedValue(unit, numValue, operator);
+            // Добавляем префикс оператора если нужно
+            if (operator !== '=') {
+                const prefix = this.getOperatorPrefix(operator);
+                formattedValue = `${prefix}${formattedValue}`;
+            }
+            return formattedValue;
+        }
+        // Стандартная обработка других сравнений
         const left = this.translate(node.left);
         const right = this.translate(node.right);
-        const operator = node.operator;
-        // Специальная обработка для ИЗВЛЕЧЬ(Период, единица)
-        if (node.left.type === 'FunctionCall' && node.left.funcName === 'ИЗВЛЕЧЬ') {
-            return this.formatExtractComparisonWithOperator(node.left, operator, right);
-        }
         return `${this.getOperatorPrefix(operator)}${right}`;
+    }
+    formatPeriodStartComparison(operator, periodNode) {
+        if (periodNode.args.length !== 2) {
+            throw new Error('НАЧАЛОПЕРИОДА требует 2 аргумента');
+        }
+        const unit = this.getUnitName(periodNode.args[1]);
+        return this.getPeriodDescription(unit, operator);
+    }
+    getPeriodDescription(unit, operator) {
+        const baseForms = {
+            ru: {
+                ГОД: "года",
+                КВАРТАЛ: "квартала",
+                МЕСЯЦ: "месяца",
+                НЕДЕЛЯ: "недели",
+                ДЕНЬ: "дня",
+                ЧАС: "часа",
+                МИНУТА: "минуты",
+                СЕКУНДА: "секунды",
+                ДЕНЬНЕДЕЛИ: "дня недели",
+                ДЕНЬГОДА: "дня года"
+            },
+            en: {
+                ГОД: "year",
+                КВАРТАЛ: "quarter",
+                МЕСЯЦ: "month",
+                НЕДЕЛЯ: "week",
+                ДЕНЬ: "day",
+                ЧАС: "hour",
+                МИНУТА: "minute",
+                СЕКУНДА: "second",
+                ДЕНЬНЕДЕЛИ: "week day",
+                ДЕНЬГОДА: "year day"
+            }
+        };
+        const periodStartForms = {
+            ru: {
+                '=': "Начало ",
+                '<=': "по начало ",
+                '>=': "с начала ",
+                '<': "до начала ",
+                '>': "после начала "
+            },
+            en: {
+                '=': "Start of ",
+                '<=': "by start of ",
+                '>=': "since start of ",
+                '<': "before start of ",
+                '>': "after start of "
+            }
+        };
+        const baseForm = baseForms[this.language][unit];
+        const periodStartForm = periodStartForms[this.language][operator];
+        return `${periodStartForm}${baseForm}`;
+    }
+    formatExtractedValue(unit, value, operator) {
+        switch (unit) {
+            case 'ГОД':
+                return `${value}`;
+            case 'КВАРТАЛ':
+                return `${value} кв.`;
+            case 'МЕСЯЦ':
+                return this.getMonthName(value);
+            case 'НЕДЕЛЯ':
+                return `${value} неделя`;
+            case 'ДЕНЬ':
+                // Для дней возвращаем формат "дд.мм"
+                return this.formatDayOfMonth(value);
+            case 'ЧАС':
+                return `${value} час${this.getHourSuffix(value)}`;
+            case 'МИНУТА':
+                return `${value} минут${this.getMinuteSuffix(value)}`;
+            case 'СЕКУНДА':
+                return `${value} секунд${this.getSecondSuffix(value)}`;
+            case 'ДЕНЬНЕДЕЛИ':
+                return this.formatDayOfWeek(value, operator);
+            case 'ДЕНЬГОДА':
+                return this.formatDayOfYear(value);
+            default:
+                throw new Error(`Неизвестная единица измерения: ${unit}`);
+        }
+    }
+    formatDayOfWeek(dayNumber, operator) {
+        const dayName = this.getDayOfWeekName(dayNumber);
+        const dayNameForComp = this.getDayOfWeekNameForComp(dayNumber);
+        switch (operator) {
+            case '=':
+                return dayName;
+            case '<=':
+                return `${dayName}`;
+            case '>=':
+                return `${dayNameForComp}`;
+            case '>':
+                return `${dayNameForComp}`;
+            case '<':
+                return `${dayNameForComp}`;
+            default:
+                return dayName;
+        }
+    }
+    formatDayOfMonth(day) {
+        // Форматируем день как "дд.01" (месяц всегда 01 для примера)
+        return `${day.toString().padStart(2, '0')}.01`;
+    }
+    // Вспомогательные методы для склонений
+    getHourSuffix(val) {
+        if (this.language === 'ru') {
+            if (val % 10 === 1 && val % 100 !== 11)
+                return '';
+            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
+                return 'а';
+            return 'ов';
+        }
+        return '';
+    }
+    getMinuteSuffix(val) {
+        if (this.language === 'ru') {
+            if (val % 10 === 1 && val % 100 !== 11)
+                return 'а';
+            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
+                return 'ы';
+            return '';
+        }
+        return '';
+    }
+    getSecondSuffix(val) {
+        if (this.language === 'ru') {
+            if (val % 10 === 1 && val % 100 !== 11)
+                return 'а';
+            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
+                return 'ы';
+            return '';
+        }
+        return '';
+    }
+    formatDateComparison(fieldName, dateNode, operator) {
+        const dateStr = this.translateDate(dateNode);
+        const prefix = this.getOperatorPrefix(operator);
+        if (operator === '=') {
+            return `${fieldName}: ${dateStr}`;
+        }
+        // Для остальных операторов добавляем соответствующий префикс
+        // с, по, после, до
+        return `${fieldName}: ${prefix}${dateStr}`;
     }
     formatExtractComparisonWithOperator(extractNode, operator, value) {
         const [_, unitNode] = extractNode.args;
@@ -323,106 +491,21 @@ class Translator {
                 return `${prefix}${dateFormatted}`; // "до дд.мм"
         }
     }
-    //метод для форматирования сравнений с ИЗВЛЕЧЬ
-    formatExtractComparison(extractNode, value) {
-        const [_, unitNode] = extractNode.args;
-        const unit = this.getUnitName(unitNode);
-        const numValue = parseInt(value);
-        const translations = {
-            ru: {
-                ГОД: (val) => `${val} год`, // Всегда "год"
-                КВАРТАЛ: (val) => `${val} квартал${this.getQuarterSuffix(val)}`,
-                МЕСЯЦ: (val) => this.getMonthName(val),
-                НЕДЕЛЯ: (val) => `${val} неделя${this.getWeekSuffix(val)}`,
-                ДЕНЬ: (val) => `${val} день`, // Всегда "день"
-                ЧАС: (val) => `${val} час${this.getHourSuffix(val)}`,
-                МИНУТА: (val) => `${val} минут${this.getMinuteSuffix(val)}`,
-                СЕКУНДА: (val) => `${val} секунд${this.getSecondSuffix(val)}`,
-                ДЕНЬНЕДЕЛИ: (val) => this.getDayOfWeekName(val),
-                ДЕНЬГОДА: (val) => this.formatDayOfYear(val)
-            },
-            en: {
-                ГОД: (val) => `${val} year${val !== 1 ? 's' : ''}`,
-                КВАРТАЛ: (val) => `${val} quarter${val !== 1 ? 's' : ''}`,
-                МЕСЯЦ: (val) => this.getMonthName(val),
-                НЕДЕЛЯ: (val) => `${val} week${val !== 1 ? 's' : ''}`,
-                ДЕНЬ: (val) => `${val} day${val !== 1 ? 's' : ''}`,
-                ЧАС: (val) => `${val} hour${val !== 1 ? 's' : ''}`,
-                МИНУТА: (val) => `${val} minute${val !== 1 ? 's' : ''}`,
-                СЕКУНДА: (val) => `${val} second${val !== 1 ? 's' : ''}`,
-                ДЕНЬНЕДЕЛИ: (val) => this.getDayOfWeekName(val),
-                ДЕНЬГОДА: (val) => this.formatDayOfYear(val)
-            }
-        };
-        return translations[this.language][unit](numValue);
-    }
-    getHourSuffix(val) {
-        if (this.language === 'ru') {
-            // Русские правила склонения для "час"
-            if (val % 10 === 1 && val % 100 !== 11)
-                return '';
-            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
-                return 'а';
-            return 'ов';
-        }
-        // Английский вариант
-        return val === 1 ? '' : 's';
-    }
-    getMinuteSuffix(val) {
-        if (this.language === 'ru') {
-            // Русские правила склонения для "минута"
-            if (val % 10 === 1 && val % 100 !== 11)
-                return 'а';
-            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
-                return 'ы';
-            return '';
-        }
-        // Английский вариант
-        return val === 1 ? '' : 's';
-    }
-    getSecondSuffix(val) {
-        if (this.language === 'ru') {
-            // Русские правила склонения для "секунда"
-            if (val % 10 === 1 && val % 100 !== 11)
-                return 'а';
-            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
-                return 'ы';
-            return '';
-        }
-        // Английский вариант
-        return val === 1 ? '' : 's';
-    }
-    getYearSuffix(val) {
-        if (this.language === 'ru') {
-            // Для "год" используем форму "год" для всех чисел
-            return '';
-        }
-        return val === 1 ? '' : 's';
-    }
-    getQuarterSuffix(val) {
-        return this.language === 'ru' ? (val % 10 === 1 && val % 100 !== 11 ? '' : 'а') : '';
-    }
-    getWeekSuffix(val) {
-        if (this.language === 'ru') {
-            if (val % 10 === 1 && val % 100 !== 11)
-                return '';
-            if (val % 10 >= 2 && val % 10 <= 4 && (val % 100 < 10 || val % 100 >= 20))
-                return 'и';
-            return '';
-        }
-        return val === 1 ? '' : 's';
-    }
-    getDaySuffix(val) {
-        if (this.language === 'ru') {
-            // Для "день" используем форму "день" для всех чисел
-            return '';
-        }
-        return val === 1 ? '' : 's';
-    }
     translateLogical(node) {
         const left = this.translate(node.left);
         const right = this.translate(node.right);
+        // Обработка комбинированных условий с ИЗВЛЕЧЬ
+        if (node.operator === 'И') {
+            if (this.isExtractComparison(node.left) && this.isExtractComparison(node.right)) {
+                return `${left}, ${right}`;
+            }
+        }
         return `${left} ${node.operator === 'И' ? 'и' : 'или'} ${right}`;
+    }
+    isExtractComparison(node) {
+        return node.type === 'Comparison' &&
+            node.left.type === 'FunctionCall' &&
+            node.left.funcName === 'ИЗВЛЕЧЬ';
     }
     translateLiteral(node) {
         return node.value;
@@ -563,6 +646,21 @@ class Translator {
             ru: ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'],
             en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         };
+        // Проверяем валидность номера дня
+        if (day < 1 || day > 7) {
+            throw new Error(`Номер дня недели должен быть от 1 до 7, получено: ${day}`);
+        }
+        return days[this.language][day - 1] || day.toString();
+    }
+    getDayOfWeekNameForComp(day) {
+        const days = {
+            ru: ['понедельника', 'вторника', 'среды', 'четверга', 'пятницы', 'субботы', 'воскресенья'],
+            en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        };
+        // Проверяем валидность номера дня
+        if (day < 1 || day > 7) {
+            throw new Error(`Номер дня недели должен быть от 1 до 7, получено: ${day}`);
+        }
         return days[this.language][day - 1] || day.toString();
     }
     formatDayOfYear(day) {
@@ -633,60 +731,138 @@ class Translator {
     }
     translateAdd(node) {
         const [dateNode, unitNode, amountNode] = node.args;
+        // Проверяем, что первый аргумент - СЕЙЧАС()
+        if (!(dateNode.type === 'FunctionCall' && dateNode.funcName === 'СЕЙЧАС')) {
+            throw new Error('Первым аргументом ДОБАВИТЬ должен быть СЕЙЧАС()');
+        }
         const unit = this.getUnitName(unitNode);
-        const amount = this.translate(amountNode);
-        const dateStr = dateNode.type === 'FunctionCall' && dateNode.funcName === 'СЕЙЧАС'
-            ? this.getTranslation('current')
-            : this.translate(dateNode);
-        return `${dateStr} + ${amount} ${this.getUnitTranslation(unit, parseInt(amount))}`;
+        const amount = parseInt(this.translate(amountNode));
+        // Получаем базовое название единицы времени
+        const unitName = this.getSimpleUnitName(unit);
+        // Формируем строку с правильным склонением
+        const formattedUnit = this.formatUnitWithCount(unit, amount);
+        return `текущий + ${amount} ${formattedUnit}`;
+    }
+    formatUnitWithCount(unit, count) {
+        const translations = {
+            ru: {
+                ГОД: this.pluralize(count, ['год', 'года', 'лет']),
+                КВАРТАЛ: this.pluralize(count, ['кв.', 'кв.', 'кв.']),
+                МЕСЯЦ: this.pluralize(count, ['месяц', 'месяца', 'месяцев']),
+                НЕДЕЛЯ: this.pluralize(count, ['неделя', 'недели', 'недель']),
+                ДЕНЬ: this.pluralize(count, ['день', 'дня', 'дней']),
+                ЧАС: this.pluralize(count, ['час', 'часа', 'часов']),
+                МИНУТА: this.pluralize(count, ['минута', 'минуты', 'минут']),
+                СЕКУНДА: this.pluralize(count, ['секунда', 'секунды', 'секунд']),
+                ДЕНЬНЕДЕЛИ: this.pluralize(count, ['день недели', 'дня недели', 'дней недели']),
+                ДЕНЬГОДА: this.pluralize(count, ['день года', 'дня года', 'дней года'])
+            },
+            en: {
+                ГОД: count === 1 ? 'year' : 'years',
+                КВАРТАЛ: count === 1 ? 'quarter' : 'quarters',
+                МЕСЯЦ: count === 1 ? 'month' : 'months',
+                НЕДЕЛЯ: count === 1 ? 'week' : 'weeks',
+                ДЕНЬ: count === 1 ? 'day' : 'days',
+                ЧАС: count === 1 ? 'hour' : 'hours',
+                МИНУТА: count === 1 ? 'minute' : 'minutes',
+                СЕКУНДА: count === 1 ? 'second' : 'seconds',
+                ДЕНЬНЕДЕЛИ: count === 1 ? 'day of week' : 'days of week',
+                ДЕНЬГОДА: count === 1 ? 'day of year' : 'days of year'
+            }
+        };
+        return translations[this.language][unit];
+    }
+    translateExtractComparison(leftExtract, operator, rightExtract) {
+        // Проверяем, что справа СЕЙЧАС()
+        if (!(rightExtract.args[0].type === 'FunctionCall' &&
+            rightExtract.args[0].funcName === 'СЕЙЧАС')) {
+            throw new Error('Ожидалась функция СЕЙЧАС() в правой части сравнения');
+        }
+        const unit = this.getUnitName(leftExtract.args[1]);
+        const operatorText = this.getCurrentTimeOperatorText(operator, unit);
+        const unitPhrase = operator === '<='
+            ? this.getCurrentTimeUnitAccusative(unit) // Винительный падеж для "<="
+            : this.getCurrentTimeUnitGenitive(unit); // Родительный падеж для других операторов
+        return `${operatorText}${unitPhrase}`;
+    }
+    getCurrentTimeOperatorText(operator, unit) {
+        const operators = {
+            ru: {
+                '<': 'до ',
+                '<=': 'по ',
+                '>': 'после ',
+                '>=': 'с ',
+                '=': ''
+            },
+            en: {
+                '<': 'before ',
+                '<=': 'by ',
+                '>': 'after ',
+                '>=': 'since ',
+                '=': ''
+            }
+        };
+        return operators[this.language][operator];
+    }
+    getCurrentTimeUnitAccusative(unit) {
+        // Винительный падеж (кого? что?) для оператора <=
+        const phrases = {
+            ru: {
+                ГОД: 'текущий год',
+                КВАРТАЛ: 'текущий квартал',
+                МЕСЯЦ: 'текущий месяц',
+                НЕДЕЛЯ: 'текущую неделю',
+                ДЕНЬ: 'текущий день',
+                ЧАС: 'текущий час',
+                МИНУТА: 'текущую минуту',
+                СЕКУНДА: 'текущую секунду',
+                ДЕНЬНЕДЕЛИ: 'текущий день недели',
+                ДЕНЬГОДА: 'текущий день года'
+            },
+            en: {
+                ГОД: 'current year',
+                КВАРТАЛ: 'current quarter',
+                МЕСЯЦ: 'current month',
+                НЕДЕЛЯ: 'current week',
+                ДЕНЬ: 'current day',
+                ЧАС: 'current hour',
+                МИНУТА: 'current minute',
+                СЕКУНДА: 'current second',
+                ДЕНЬНЕДЕЛИ: 'current day of week',
+                ДЕНЬГОДА: 'current day of year'
+            }
+        };
+        return phrases[this.language][unit];
+    }
+    getCurrentTimeUnitGenitive(unit) {
+        // Родительный падеж (кого? чего?)
+        const phrases = {
+            ru: {
+                ГОД: 'текущего года',
+                КВАРТАЛ: 'текущего квартала',
+                МЕСЯЦ: 'текущего месяца',
+                НЕДЕЛЯ: 'текущей недели',
+                ДЕНЬ: 'текущего дня',
+                ЧАС: 'текущего часа',
+                МИНУТА: 'текущей минуты',
+                СЕКУНДА: 'текущей секунды',
+                ДЕНЬНЕДЕЛИ: 'текущего дня недели',
+                ДЕНЬГОДА: 'текущего дня года'
+            },
+            en: {
+                ГОД: 'current year',
+                КВАРТАЛ: 'current quarter',
+                МЕСЯЦ: 'current month',
+                НЕДЕЛЯ: 'current week',
+                ДЕНЬ: 'current day',
+                ЧАС: 'current hour',
+                МИНУТА: 'current minute',
+                СЕКУНДА: 'current second',
+                ДЕНЬНЕДЕЛИ: 'current day of week',
+                ДЕНЬГОДА: 'current day of year'
+            }
+        };
+        return phrases[this.language][unit];
     }
 }
 exports.Translator = Translator;
-/*private formatExtractComparisonWithOperator(
-    extractNode: FunctionCallNode,
-    operator: string,
-    value: string
-): string {
-    const [_, unitNode] = extractNode.args;
-    const unit = this.getUnitName(unitNode);
-    const numValue = parseInt(value);
-    
-    // Приводим operator к типу ComparisonOperator
-    const op = operator as ComparisonOperator;
-    const prefix = this.getOperatorPrefix(op);
-    
-    const translations: UnitTranslationWithOperator = {
-        ru: {
-            ГОД: (val, _) => `${prefix}${val} год`,
-            КВАРТАЛ: (val, op) => {
-                const suffix = op === '>=' || op === '<=' ? 'а' : '';
-                return `${prefix}${val} квартал${suffix}`;
-            },
-            МЕСЯЦ: (val, op) => {
-                const suffix = op === '>=' || op === '<=' ? 'а' : '';
-                return `${prefix}${this.getMonthName(val)}${suffix}`;
-            },
-            НЕДЕЛЯ: (val, op) => `${prefix}${val} недел${op === '>=' || op === '<=' ? 'и' : 'я'}`,
-            ДЕНЬ: (val, op) => `${prefix}${val} дн${op === '>=' || op === '<=' ? 'я' : 'ь'}`,
-            ЧАС: (val, op) => `${prefix}${val} час${op === '>=' || op === '<=' ? 'а' : ''}`,
-            МИНУТА: (val, op) => `${prefix}${val} минут${op === '>=' || op === '<=' ? 'ы' : 'у'}`,
-            СЕКУНДА: (val, op) => `${prefix}${val} секунд${op === '>=' || op === '<=' ? 'ы' : 'у'}`,
-            ДЕНЬНЕДЕЛИ: (val, _) => `${prefix}${this.getDayOfWeekName(val)}`,
-            ДЕНЬГОДА: (val, _) => `${prefix}${this.formatDayOfYear(val)}`
-        },
-        en: {
-            ГОД: (val, _) => `${prefix}${val} year${val !== 1 ? 's' : ''}`,
-            КВАРТАЛ: (val, _) => `${prefix}${val} quarter${val !== 1 ? 's' : ''}`,
-            МЕСЯЦ: (val, _) => `${prefix}${this.getMonthName(val)}`,
-            НЕДЕЛЯ: (val, _) => `${prefix}${val} week${val !== 1 ? 's' : ''}`,
-            ДЕНЬ: (val, _) => `${prefix}${val} day${val !== 1 ? 's' : ''}`,
-            ЧАС: (val, _) => `${prefix}${val} hour${val !== 1 ? 's' : ''}`,
-            МИНУТА: (val, _) => `${prefix}${val} minute${val !== 1 ? 's' : ''}`,
-            СЕКУНДА: (val, _) => `${prefix}${val} second${val !== 1 ? 's' : ''}`,
-            ДЕНЬНЕДЕЛИ: (val, _) => `${prefix}${this.getDayOfWeekName(val)}`,
-            ДЕНЬГОДА: (val, _) => `${prefix}${this.formatDayOfYear(val)}`
-        }
-    };
-    
-    return translations[this.language][unit](numValue, op);
-}*/ 

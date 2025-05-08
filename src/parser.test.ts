@@ -1,40 +1,45 @@
-// parser.test.ts
-import test from 'node:test';
-import assert from 'node:assert';
 import { Parser } from './parser';
-import { PresentFunctionNode, NowFunctionNode, ExtractRegexFunctionNode, ExtractWithValueFunctionNode } from './ast';
+import { Tokenizer } from './tokenizer';
+import { ASTFactory } from './ast';
 
-test('Парсер должен правильно обрабатывать СЕЙЧАС()', () => {
-    const parser = new Parser("СЕЙЧАС()");
+describe('Parser', () => {
+  function testParsing(formula: string, expected: any) {
+    const tokenizer = new Tokenizer(formula);
+    const tokens = tokenizer.tokenize();
+    const parser = new Parser(tokens);
     const result = parser.parse();
-    assert.ok(result instanceof PresentFunctionNode);
-});
+    expect(result).toEqual(expected);
+  }
 
-test('Парсер должен правильно обрабатывать ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)', () => {
-    const parser = new Parser("ИЗВЛЕЧЬ(СЕЙЧАС(), ГОД)");
-    const result = parser.parse();
-    assert.ok(result instanceof NowFunctionNode);
-    assert.strictEqual(result.unit, 'Текущий год');
-});
+  test('should parse EXTRACT function', () => {
+    testParsing(
+      'ИЗВЛЕЧЬ(Период, ГОД)',
+      ASTFactory.createFunctionCall('ИЗВЛЕЧЬ', [
+        ASTFactory.createIdentifier('Период'),
+        ASTFactory.createLiteral('ГОД')
+      ])
+    );
+  });
 
-test('Парсер должен правильно обрабатывать ИЗВЛЕЧЬ(Период, ГОД)', () => {
-    const parser = new Parser("ИЗВЛЕЧЬ(Период, ГОД)");
-    const result = parser.parse();
-    assert.ok(result instanceof ExtractRegexFunctionNode);
-    assert.strictEqual(result.unit, 'ГОД');
-});
+  test('should parse nested functions', () => {
+    testParsing(
+      'ИЗВЛЕЧЬ(НАЧАЛОПЕРИОДА(СЕЙЧАС(), МЕСЯЦ), ДЕНЬ)',
+      ASTFactory.createFunctionCall('ИЗВЛЕЧЬ', [
+        ASTFactory.createFunctionCall('НАЧАЛОПЕРИОДА', [
+          ASTFactory.createFunctionCall('СЕЙЧАС', []),
+          ASTFactory.createLiteral('МЕСЯЦ')
+        ]),
+        ASTFactory.createLiteral('ДЕНЬ')
+      ])
+    );
+  });
 
-test('Парсер должен правильно обрабатывать ИЗВЛЕЧЬ(Период, ГОД) = 1', () => {
-    const parser = new Parser("ИЗВЛЕЧЬ(Период, ГОД) = 1");
-    const result = parser.parse();
-    assert.ok(result instanceof ExtractWithValueFunctionNode);
-    assert.strictEqual(result.period, 'Период');
-    assert.strictEqual(result.unit, 'ГОД');
-    assert.strictEqual(result.value, '1');
-    assert.strictEqual(result.comparisonOperator, '=');
-});
-
-test('Парсер должен выбрасывать ошибку для неверного формата', () => {
-    const parser = new Parser("Неверный формат");
-    assert.throws(() => parser.parse(), { message: 'Неверный формат входного выражения' });
+  test('should throw on invalid syntax', () => {
+    expect(() => {
+      const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, ГОД < 2023');
+      const tokens = tokenizer.tokenize();
+      const parser = new Parser(tokens);
+      parser.parse();
+    }).toThrow();
+  });
 });
