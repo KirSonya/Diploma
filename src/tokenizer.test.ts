@@ -1,8 +1,8 @@
 // tokenizer.test.ts
 import { Tokenizer } from './tokenizer';
 
-describe('Tokenizer', () => {
-  test('should tokenize simple comparison', () => {
+describe('Токенизатор', () => {
+  test('токенизация простых выражений', () => {
     const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) < 2023');
     const tokens = tokenizer.tokenize();
     
@@ -18,7 +18,7 @@ describe('Tokenizer', () => {
     ]);
   });
 
-  test('should tokenize complex logical expression', () => {
+  test('токенизация логических выражений', () => {
     const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15');
     const tokens = tokenizer.tokenize();
     
@@ -43,7 +43,7 @@ describe('Tokenizer', () => {
     ]);
   });
 
-  test('should tokenize function with multiple arguments', () => {
+  test('токенизация функций с несколькими аргументами', () => {
     const tokenizer = new Tokenizer('ДАТА(2023, 5, 15)');
     const tokens = tokenizer.tokenize();
     
@@ -59,7 +59,7 @@ describe('Tokenizer', () => {
     ]);
   });
 
-  test('should tokenize compound operators', () => {
+  test('токенизация формул со знаками сравнения', () => {
     const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) <= 2023');
     const tokens = tokenizer.tokenize();
     
@@ -75,7 +75,7 @@ describe('Tokenizer', () => {
     ]);
   });
 
-  test('should throw error for unknown character', () => {
+  test('обработка ошибок при некорректных формулах', () => {
     const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) @ 2023');
     expect(() => tokenizer.tokenize()).toThrow('Неизвестный символ: @');
   });

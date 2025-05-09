@@ -2,7 +2,7 @@ import { Parser } from './parser';
 import { Tokenizer } from './tokenizer';
 import { ASTFactory } from './ast';
 
-describe('Parser', () => {
+describe('Парсер', () => {
   function testParsing(formula: string, expected: any) {
     const tokenizer = new Tokenizer(formula);
     const tokens = tokenizer.tokenize();
@@ -11,7 +11,7 @@ describe('Parser', () => {
     expect(result).toEqual(expected);
   }
 
-  test('should parse EXTRACT function', () => {
+  test('парсинг функции EXTRACT', () => {
     testParsing(
       'ИЗВЛЕЧЬ(Период, ГОД)',
       ASTFactory.createFunctionCall('ИЗВЛЕЧЬ', [
@@ -21,7 +21,7 @@ describe('Parser', () => {
     );
   });
 
-  test('should parse nested functions', () => {
+  test('парсинг вложенных функций', () => {
     testParsing(
       'ИЗВЛЕЧЬ(НАЧАЛОПЕРИОДА(СЕЙЧАС(), МЕСЯЦ), ДЕНЬ)',
       ASTFactory.createFunctionCall('ИЗВЛЕЧЬ', [
@@ -34,7 +34,7 @@ describe('Parser', () => {
     );
   });
 
-  test('should throw on invalid syntax', () => {
+  test('ошибка при некорректных формулах', () => {
     expect(() => {
       const tokenizer = new Tokenizer('ИЗВЛЕЧЬ(Период, ГОД < 2023');
       const tokens = tokenizer.tokenize();

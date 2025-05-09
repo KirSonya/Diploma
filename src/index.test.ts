@@ -1,31 +1,43 @@
 import { processFormula } from './index';
+import { Tokenizer } from './tokenizer';
+import { Parser } from './parser';
+import { Translator } from './translator';
 
-describe('processFormula', () => {
-  test('should process simple comparison in Russian', () => {
-    const result = processFormula('ИЗВЛЕЧЬ(Период, ГОД) < 2023', 'ru');
-    expect(result).toBe('до 2023');
-  });
-
-  test('should process month comparison in Russian', () => {
-    const result = processFormula('ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5', 'ru');
-    expect(result).toBe('Май');
-  });
-
-  test('should process logical AND in Russian', () => {
-    const result = processFormula(
-      'ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15', 
-      'ru'
-    );
-    expect(result).toBe('Май, до 15.01');
-  });
-
-  test('should process simple comparison in English', () => {
-    const result = processFormula('ИЗВЛЕЧЬ(Период, ГОД) < 2023', 'en');
-    expect(result).toBe('before 2023');
-  });
-
-  test('should throw error for invalid formula', () => {
-    expect(() => processFormula('ИЗВЛЕЧЬ(Период, ГОД < 2023', 'ru'))
-      .toThrow('Ошибка обработки формулы');
+describe('Интеграционное тестирование', () => {
+  test('Полный процесс преобразования для формулы ИЗВЛЕЧЬ(Период, НЕДЕЛЯ)', () => {
+    const formula = 'ИЗВЛЕЧЬ(Период, НЕДЕЛЯ)';
+    const result = processFormula(formula);
+    
+    // Проверяем корректность токенизации
+    const tokenizer = new Tokenizer(formula);
+    const tokens = tokenizer.tokenize();
+    expect(tokens).toEqual([
+      { type: 'FUNCTION', value: 'ИЗВЛЕЧЬ' },
+      { type: 'LPAREN', value: '(' },
+      { type: 'IDENTIFIER', value: 'Период' },
+      { type: 'COMMA', value: ',' },
+      { type: 'UNIT', value: 'НЕДЕЛЯ' },
+      { type: 'RPAREN', value: ')' }
+    ]);
+    
+    // Проверяем корректность парсинга
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
+    expect(ast).toEqual({
+      type: 'FunctionCall',
+      funcName: 'ИЗВЛЕЧЬ',
+      args: [
+        { type: 'Identifier', name: 'Период' },
+        { type: 'Literal', value: 'НЕДЕЛЯ' }
+      ]
+    });
+    
+    // Проверяем корректность перевода
+    const translator = new Translator('ru');
+    const translation = translator.translate(ast);
+    expect(translation).toBe('Неделя');
+    
+    // Проверяем конечный результат
+    expect(result).toBe('Неделя');
   });
 });

@@ -2,7 +2,6 @@ import { Translator } from './translator';
 import { Parser } from './parser';
 import { Tokenizer } from './tokenizer';
 
-// Упрощённая функция для тестирования перевода
 function testTranslation(formula: string, expected: string, lang: 'ru' | 'en' = 'ru') {
   const tokenizer = new Tokenizer(formula);
   const tokens = tokenizer.tokenize();
@@ -43,14 +42,9 @@ describe('Formula Translation', () => {
       ru: 'Май, до 15.01',
       en: 'May, before 15.01'
     }
-    /*{
-      formula: 'НАЧАЛОПЕРИОДА(СЕЙЧАС(), МЕСЯЦ)',
-      ru: 'Январь начала периода',
-      en: 'Start of current month'
-    }*/
   ];
 
-  describe('Russian translations', () => {
+  describe('Русский язык', () => {
     testCases.forEach(({formula, ru}) => {
       test(`"${formula}" → "${ru}"`, () => {
         testTranslation(formula, ru, 'ru');
@@ -58,7 +52,7 @@ describe('Formula Translation', () => {
     });
   });
 
-  describe('English translations', () => {
+  describe('Английский язык', () => {
     testCases.forEach(({formula, en}) => {
       test(`"${formula}" → "${en}"`, () => {
         testTranslation(formula, en, 'en');
