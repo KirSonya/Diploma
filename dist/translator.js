@@ -1133,16 +1133,129 @@ class Translator {
         if (extractNode.type !== 'FunctionCall' || extractNode.funcName !== 'ИЗВЛЕЧЬ') {
             throw new Error('Ожидалась функция ИЗВЛЕЧЬ внутри В');
         }
-        // Получаем единицу измерения из функции ИЗВЛЕЧЬ
-        const unitNode = extractNode.args[1];
-        const unit = this.getUnitName(unitNode);
-        // Преобразуем значения в числа
-        const values = valueNodes.map(node => {
-            const translated = this.translate(node);
-            return parseInt(translated, 10);
-        }).sort((a, b) => a - b);
-        // Форматируем значения в зависимости от единицы измерения
-        return this.formatInValues(values, unit);
+        // Получаем список единиц измерения из функции ИЗВЛЕЧЬ
+        const units = extractNode.args.slice(1).map(arg => this.getUnitName(arg));
+        const values = valueNodes.map(node => this.translate(node));
+        // Для составных дат (когда несколько единиц измерения)
+        if (units.length > 1) {
+            return this.formatCompositeDateValues(values, units);
+        }
+        // Для простых случаев с одной единицей измерения
+        const numericValues = values.map(v => parseInt(v, 10)).sort((a, b) => a - b);
+        return this.formatInValues(numericValues, units[0]);
+    }
+    formatCompositeDateValues(values, units) {
+        // Разбираем каждое значение на компоненты даты
+        const dateComponents = values.map(value => {
+            return this.parseCompositeValue(value, units);
+        });
+        // Форматируем каждую дату и сохраняем оригинальные компоненты
+        const formattedWithComponents = dateComponents.map(components => ({
+            formatted: this.formatDateComponents(components, units),
+            components
+        }));
+        // Группируем последовательные даты
+        const groupedDates = this.groupSequentialDates(formattedWithComponents, units);
+        // Формируем итоговую строку
+        return groupedDates.map(group => {
+            if (group.length === 1)
+                return group[0].formatted;
+            return `${group[0].formatted} – ${group[group.length - 1].formatted}`;
+        }).join(', ');
+    }
+    formatDateComponents(components, units) {
+        const parts = [];
+        // Форматирование даты
+        if (units.includes('ГОД')) {
+            const year = components['ГОД'];
+            if (units.includes('МЕСЯЦ')) {
+                const month = components['МЕСЯЦ'];
+                const monthName = this.getMonthName(month);
+                if (units.includes('ДЕНЬ')) {
+                    // Полная дата: DD.MM.YYYY
+                    const day = components['ДЕНЬ'];
+                    parts.push(`${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}.${year}`);
+                }
+                else {
+                    // Только год и месяц
+                    parts.push(`${monthName} ${year}`);
+                }
+            }
+            else {
+                // Только год
+                parts.push(year.toString());
+            }
+        }
+        // Форматирование времени
+        if (units.includes('ЧАС')) {
+            const hour = components['ЧАС'];
+            if (units.includes('МИНУТА')) {
+                const minute = components['МИНУТА'];
+                if (units.includes('СЕКУНДА')) {
+                    // Полное время: HH:MM:SS
+                    const second = components['СЕКУНДА'];
+                    parts.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`);
+                }
+                else {
+                    // Часы и минуты
+                    parts.push(this.language === 'ru'
+                        ? `${hour} час ${minute} минута`
+                        : `${hour} hour ${minute} minute`);
+                }
+            }
+            else {
+                // Только часы
+                parts.push(this.language === 'ru'
+                    ? `${hour} час`
+                    : `${hour} hour`);
+            }
+        }
+        else if (units.includes('МИНУТА') || units.includes('СЕКУНДА')) {
+            // Если есть минуты/секунды, но нет часов - это ошибка
+            throw new Error('Нельзя указать минуты/секунды без часов');
+        }
+        return parts.join(' ');
+    }
+    groupSequentialDates(dates, units) {
+        if (dates.length === 0)
+            return [];
+        const groups = [];
+        let currentGroup = [dates[0]];
+        for (let i = 1; i < dates.length; i++) {
+            if (this.isSequentialDate(currentGroup[currentGroup.length - 1].components, dates[i].components, units)) {
+                currentGroup.push(dates[i]);
+            }
+            else {
+                groups.push(currentGroup);
+                currentGroup = [dates[i]];
+            }
+        }
+        groups.push(currentGroup);
+        return groups;
+    }
+    isSequentialDate(prev, current, units) {
+        // Определяем самую младшую единицу измерения
+        const unitOrder = [
+            'ГОД', 'КВАРТАЛ', 'МЕСЯЦ', 'НЕДЕЛЯ', 'ДЕНЬ',
+            'ЧАС', 'МИНУТА', 'СЕКУНДА', 'ДЕНЬНЕДЕЛИ', 'ДЕНЬГОДА'
+        ];
+        // Находим самую младшую единицу из запрошенных
+        let minUnit = units[0];
+        for (const unit of units) {
+            if (unitOrder.indexOf(unit) > unitOrder.indexOf(minUnit)) {
+                minUnit = unit;
+            }
+        }
+        // Проверяем, что все старшие единицы совпадают
+        for (const unit of units) {
+            if (unit === minUnit)
+                break;
+            if (prev[unit] !== current[unit]) {
+                return false;
+            }
+        }
+        // Проверяем последовательность для младшей единицы
+        return current[minUnit] === prev[minUnit] + 1;
     }
     /*private formatInValues(values: number[], unit: TimeUnit): string {
         if (values.length === 0) return '';
@@ -1172,28 +1285,31 @@ class Translator {
         
         return formattedGroups.join(', ');
     }*/
-    formatCompositeValues(values, units) {
+    /*private formatCompositeValues(values: string[], units: TimeUnit[]): string {
         // Разбираем числовые значения на компоненты даты/времени
         const dateComponents = values.map(value => this.parseCompositeValue(value, units));
+        
         // Форматируем каждое значение
         const formattedValues = dateComponents.map(components => {
             return this.formatDateComponents(components, units);
         });
+        
         // Группируем последовательные даты
         const groupedValues = this.groupSequentialDates(dateComponents, units);
+        
         // Форматируем группы
         const formattedGroups = groupedValues.map(group => {
             if (group.length === 1) {
                 return this.formatDateComponents(group[0], units);
-            }
-            else {
+            } else {
                 const first = this.formatDateComponents(group[0], units);
                 const last = this.formatDateComponents(group[group.length - 1], units);
                 return `${first} – ${last}`;
             }
         });
+        
         return formattedGroups.join(', ');
-    }
+    }*/
     /*parseCompositeValue(value: string, units: TimeUnit[]): any {
         throw new Error('Method not implemented.');
     }*/
@@ -1219,21 +1335,26 @@ class Translator {
         }
         return result;
     }
-    formatDateComponents(components, units) {
+    /*private formatDateComponents(components: Record<TimeUnit, number>, units: TimeUnit[]): string {
         const year = components['ГОД'] || components['YEAR'];
+        
         // Форматирование даты
         if (units.includes('МЕСЯЦ') || units.includes('MONTH')) {
             const month = components['МЕСЯЦ'] || components['MONTH'];
             const monthName = this.getMonthName(month);
+            
             if (units.includes('ДЕНЬ') || units.includes('DAY')) {
                 const day = components['ДЕНЬ'] || components['DAY'];
                 const paddedDay = day.toString().padStart(2, '0');
                 const paddedMonth = month.toString().padStart(2, '0');
+                
                 // Форматирование времени
                 if (units.includes('ЧАС') || units.includes('HOUR')) {
                     const hour = components['ЧАС'] || components['HOUR'];
+                    
                     if (units.includes('МИНУТА') || units.includes('MINUTE')) {
                         const minute = components['МИНУТА'] || components['MINUTE'];
+                        
                         if (units.includes('СЕКУНДА') || units.includes('SECOND')) {
                             const second = components['СЕКУНДА'] || components['SECOND'];
                             // Полный формат даты и времени
@@ -1258,17 +1379,21 @@ class Translator {
         // Только год
         return year.toString();
     }
-    groupSequentialDates(dates, units) {
-        if (dates.length === 0)
-            return [];
-        const groups = [];
-        let currentGroup = [dates[0]];
+    
+    private groupSequentialDates(dates: Record<TimeUnit, number>[], units: TimeUnit[]): Record<TimeUnit, number>[][] {
+        if (dates.length === 0) return [];
+        
+        const groups: Record<TimeUnit, number>[][] = [];
+        let currentGroup: Record<TimeUnit, number>[] = [dates[0]];
+        
         for (let i = 1; i < dates.length; i++) {
             let isSequential = true;
+            
             // Проверяем, является ли текущая дата последовательной для всех единиц
             for (const unit of units) {
                 const prevValue = currentGroup[currentGroup.length - 1][unit];
                 const currValue = dates[i][unit];
+                
                 // Для дней проверяем последовательность
                 if (unit === 'ДЕНЬ' || unit === 'DAY') {
                     if (currValue !== prevValue + 1) {
@@ -1282,17 +1407,18 @@ class Translator {
                     break;
                 }
             }
+            
             if (isSequential) {
                 currentGroup.push(dates[i]);
-            }
-            else {
+            } else {
                 groups.push(currentGroup);
                 currentGroup = [dates[i]];
             }
         }
+        
         groups.push(currentGroup);
         return groups;
-    }
+    }*/
     formatInValues(values, unit) {
         if (values.length === 0)
             return '';
