@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const translator_1 = require("./translator");
 const parser_1 = require("./parser");
 const tokenizer_1 = require("./tokenizer");
-// Упрощённая функция для тестирования перевода
 function testTranslation(formula, expected, lang = 'ru') {
     const tokenizer = new tokenizer_1.Tokenizer(formula);
     const tokens = tokenizer.tokenize();
@@ -40,20 +39,15 @@ describe('Formula Translation', () => {
             ru: 'Май, до 15.01',
             en: 'May, before 15.01'
         }
-        /*{
-          formula: 'НАЧАЛОПЕРИОДА(СЕЙЧАС(), МЕСЯЦ)',
-          ru: 'Январь начала периода',
-          en: 'Start of current month'
-        }*/
     ];
-    describe('Russian translations', () => {
+    describe('Русский язык', () => {
         testCases.forEach(({ formula, ru }) => {
             test(`"${formula}" → "${ru}"`, () => {
                 testTranslation(formula, ru, 'ru');
             });
         });
     });
-    describe('English translations', () => {
+    describe('Английский язык', () => {
         testCases.forEach(({ formula, en }) => {
             test(`"${formula}" → "${en}"`, () => {
                 testTranslation(formula, en, 'en');

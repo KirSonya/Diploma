@@ -89,7 +89,13 @@ export class Parser {
 
   private parsePrimaryExpression(): ASTNode {
     if (this.matchToken('IDENTIFIER')) {
-        return ASTFactory.createIdentifier(this.previous().value);
+      const identifierName = this.previous().value;
+        // Нормализуем русские и английские варианты
+        const normalizedName = identifierName === 'Period' ? 'Период' : 
+                            identifierName === 'RequestDate' ? 'ДатаОбращения' :
+                            identifierName;
+        return ASTFactory.createIdentifier(normalizedName);
+        //return ASTFactory.createIdentifier(this.previous().value);
     }
 
     if (this.matchToken('FUNCTION')) {

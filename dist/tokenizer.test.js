@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // tokenizer.test.ts
 const tokenizer_1 = require("./tokenizer");
-describe('Tokenizer', () => {
-    test('should tokenize simple comparison', () => {
+describe('Токенизатор', () => {
+    test('токенизация простых выражений', () => {
         const tokenizer = new tokenizer_1.Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) < 2023');
         const tokens = tokenizer.tokenize();
         expect(tokens).toEqual([
@@ -17,7 +17,7 @@ describe('Tokenizer', () => {
             { type: 'NUMBER', value: '2023' }
         ]);
     });
-    test('should tokenize complex logical expression', () => {
+    test('токенизация логических выражений', () => {
         const tokenizer = new tokenizer_1.Tokenizer('ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15');
         const tokens = tokenizer.tokenize();
         expect(tokens).toEqual([
@@ -40,7 +40,7 @@ describe('Tokenizer', () => {
             { type: 'NUMBER', value: '15' }
         ]);
     });
-    test('should tokenize function with multiple arguments', () => {
+    test('токенизация функций с несколькими аргументами', () => {
         const tokenizer = new tokenizer_1.Tokenizer('ДАТА(2023, 5, 15)');
         const tokens = tokenizer.tokenize();
         expect(tokens).toEqual([
@@ -54,7 +54,7 @@ describe('Tokenizer', () => {
             { type: 'RPAREN', value: ')' }
         ]);
     });
-    test('should tokenize compound operators', () => {
+    test('токенизация формул со знаками сравнения', () => {
         const tokenizer = new tokenizer_1.Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) <= 2023');
         const tokens = tokenizer.tokenize();
         expect(tokens).toEqual([
@@ -68,7 +68,7 @@ describe('Tokenizer', () => {
             { type: 'NUMBER', value: '2023' }
         ]);
     });
-    test('should throw error for unknown character', () => {
+    test('обработка ошибок при некорректных формулах', () => {
         const tokenizer = new tokenizer_1.Tokenizer('ИЗВЛЕЧЬ(Период, ГОД) @ 2023');
         expect(() => tokenizer.tokenize()).toThrow('Неизвестный символ: @');
     });

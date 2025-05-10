@@ -25,6 +25,7 @@
     "testEnvironment": "node"
   },
   "dependencies": {
+    "@types/chalk": "^2.2.4",
     "acorn": "^8.14.1",
     "acorn-walk": "^8.3.4",
     "ansi-escapes": "^4.3.2",
