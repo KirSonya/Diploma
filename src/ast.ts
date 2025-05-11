@@ -183,19 +183,8 @@ export const ASTFactory = {
   createIdentifier(name: string): IdentifierNode {
     return { type: 'Identifier', name };
   },
-  /*createDateFromNodes(yearNode: ASTNode, monthNode: ASTNode, dayNode: ASTNode): DateFunctionNode {
-    if (!ASTUtils.isLiteral(yearNode) || !ASTUtils.isLiteral(monthNode) || !ASTUtils.isLiteral(dayNode)) {
-        throw new Error('Аргументы ДАТА должны быть литералами');
-    }
-    
-    return {
-        type: 'DateFunction',
-        year: Number(yearNode.value),
-        month: Number(monthNode.value),
-        day: Number(dayNode.value)
-    };
-},*/
-createStringLiteral(value: string): LiteralNode {
+
+  createStringLiteral(value: string): LiteralNode {
     return { type: 'Literal', value };
   },
   
@@ -235,7 +224,7 @@ export const ASTUtils = {
       return node.type === 'PresentFunction';
     },
 
-    isExtractFunction(node: ASTNode): node is ExtractFunctionNode {
-        return node.type === 'ExtractFunction';
-    }
+  isExtractFunction(node: ASTNode): node is ExtractFunctionNode {
+      return node.type === 'ExtractFunction';
+  }
 };

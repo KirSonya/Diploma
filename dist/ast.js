@@ -44,18 +44,6 @@ exports.ASTFactory = {
     createIdentifier(name) {
         return { type: 'Identifier', name };
     },
-    /*createDateFromNodes(yearNode: ASTNode, monthNode: ASTNode, dayNode: ASTNode): DateFunctionNode {
-      if (!ASTUtils.isLiteral(yearNode) || !ASTUtils.isLiteral(monthNode) || !ASTUtils.isLiteral(dayNode)) {
-          throw new Error('Аргументы ДАТА должны быть литералами');
-      }
-      
-      return {
-          type: 'DateFunction',
-          year: Number(yearNode.value),
-          month: Number(monthNode.value),
-          day: Number(dayNode.value)
-      };
-  },*/
     createStringLiteral(value) {
         return { type: 'Literal', value };
     },

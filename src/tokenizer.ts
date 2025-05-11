@@ -107,12 +107,13 @@ export class Tokenizer {
     return tokens;
   }
 
-  // Добавим английские идентификаторы в список
+  /*
+  //  английские идентификаторы 
   private isIdentifier(word: string): boolean {
     const russianIdentifiers = ['Период', 'ДатаОбращения'];
     const englishIdentifiers = ['Period', 'RequestDate'];
     return [...russianIdentifiers, ...englishIdentifiers].includes(word);
-  }
+  }*/
 
   private advance(): void {
     this.position++;

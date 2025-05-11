@@ -60,12 +60,13 @@ class Tokenizer {
         }
         return tokens;
     }
-    // Добавим английские идентификаторы в список
-    isIdentifier(word) {
-        const russianIdentifiers = ['Период', 'ДатаОбращения'];
-        const englishIdentifiers = ['Period', 'RequestDate'];
-        return [...russianIdentifiers, ...englishIdentifiers].includes(word);
-    }
+    /*
+    //  английские идентификаторы
+    private isIdentifier(word: string): boolean {
+      const russianIdentifiers = ['Период', 'ДатаОбращения'];
+      const englishIdentifiers = ['Period', 'RequestDate'];
+      return [...russianIdentifiers, ...englishIdentifiers].includes(word);
+    }*/
     advance() {
         this.position++;
         this.currentChar = this.position < this.input.length ?
