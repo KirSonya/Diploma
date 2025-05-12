@@ -292,7 +292,6 @@ class Translator {
             return this.translateExtractComparison(node.left, node.operator, node.right);
         }
         const operator = node.operator;
-        // Добавляем явную проверку типа для node.left
         if (node.left.type === 'Identifier' && node.left.name === 'Период') {
             if (node.right.type === 'FunctionCall' && node.right.funcName === 'НАЧАЛОПЕРИОДА') {
                 return this.formatPeriodStartComparison(node.operator, node.right);
@@ -312,7 +311,7 @@ class Translator {
             }*/
             return formattedValue;
         }
-        // Стандартная обработка других сравнений
+        // Обработка других сравнений
         const left = this.translate(node.left);
         const right = this.translate(node.right);
         return `${this.getOperatorPrefix(operator)}${right}`;
