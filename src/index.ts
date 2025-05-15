@@ -27,10 +27,10 @@ const testFormulas = [
 ]
 
 // Выбор языка: 'ru' или 'en'
-const language: 'ru' | 'en' = 'ru';
+const language: 'ru' | 'en' = 'en';
 
 // Функция для обработки одной формулы
-export function processFormula(formula: string, lang: 'ru' | 'en' = 'ru'): string {
+export function processFormula(formula: string, lang: 'ru' | 'en' = 'en'): string {
   try {
     // 1. Токенизация
     const tokenizer = new Tokenizer(formula);

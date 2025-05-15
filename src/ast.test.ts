@@ -18,7 +18,7 @@ import {
   } from './ast';
   
   describe('ASTFactory', () => {
-    test('should create PresentFunction node', () => {
+    test('должен создать узел PresentFunction', () => {
       const node = ASTFactory.createPresentFunction();
       expect(node.type).toBe('PresentFunction');
       expect(ASTUtils.isPresentFunction(node)).toBe(true);

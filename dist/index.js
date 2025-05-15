@@ -31,9 +31,9 @@ const testFormulas = [
     "ДОБАВИТЬ(ДАТА(2017,11,26,4,30,0), ГОД, 1)"
 ];
 // Выбор языка: 'ru' или 'en'
-const language = 'ru';
+const language = 'en';
 // Функция для обработки одной формулы
-function processFormula(formula, lang = 'ru') {
+function processFormula(formula, lang = 'en') {
     try {
         // 1. Токенизация
         const tokenizer = new tokenizer_1.Tokenizer(formula);

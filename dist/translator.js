@@ -425,9 +425,9 @@ class Translator {
                 throw new Error(`Неизвестная единица измерения: ${unit}`);
         }
     }
-    formatForEnglish(unit, value, operator, prefix) {
+    /*private formatForEnglish(unit: TimeUnit, value: number, operator: ComparisonOperator, prefix: string): string {
         // Маппинг русских единиц на английские
-        const unitMapping = {
+        const unitMapping: Record<string, string> = {
             'ГОД': 'year',
             'КВАРТАЛ': 'quarter',
             'МЕСЯЦ': 'month',
@@ -439,7 +439,9 @@ class Translator {
             'ДЕНЬНЕДЕЛИ': 'weekday',
             'ДЕНЬГОДА': 'yearday'
         };
+    
         const englishUnit = unitMapping[unit] || unit;
+        
         switch (englishUnit) {
             case 'year':
                 return `${prefix}${value} year${value !== 1 ? 's' : ''}`;
@@ -457,6 +459,49 @@ class Translator {
                 return `${prefix}${value} minute${value !== 1 ? 's' : ''}`;
             case 'second':
                 return `${prefix}${value} second${value !== 1 ? 's' : ''}`;
+            case 'weekday':
+                return `${prefix}${this.dayNames.en[value - 1]}`;
+            case 'yearday':
+                const date = new Date(new Date().getFullYear(), 0, value);
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                return `${prefix}${month}/${day}`;
+            default:
+                throw new Error(`Unknown time unit: ${englishUnit}`);
+        }
+    }*/
+    formatForEnglish(unit, value, operator, prefix) {
+        // Маппинг русских единиц на английские
+        const unitMapping = {
+            'ГОД': 'year',
+            'КВАРТАЛ': 'quarter',
+            'МЕСЯЦ': 'month',
+            'НЕДЕЛЯ': 'week',
+            'ДЕНЬ': 'day',
+            'ЧАС': 'hour',
+            'МИНУТА': 'minute',
+            'СЕКУНДА': 'second',
+            'ДЕНЬНЕДЕЛИ': 'weekday',
+            'ДЕНЬГОДА': 'yearday'
+        };
+        const englishUnit = unitMapping[unit] || unit;
+        switch (englishUnit) {
+            case 'year':
+                return `${prefix}${value} year`;
+            case 'quarter':
+                return `${prefix}Q${value}`;
+            case 'month':
+                return `${prefix}${this.monthNames.en[value - 1]}`;
+            case 'week':
+                return `${prefix}${value} week`;
+            case 'day':
+                return `${prefix}${value} day`;
+            case 'hour':
+                return `${prefix}${value} hour`;
+            case 'minute':
+                return `${prefix}${value} minute`;
+            case 'second':
+                return `${prefix}${value} second`;
             case 'weekday':
                 return `${prefix}${this.dayNames.en[value - 1]}`;
             case 'yearday':

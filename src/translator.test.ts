@@ -43,7 +43,7 @@ describe('Formula Translation', () => {
     {
       formula: 'ИЗВЛЕЧЬ(Период, ГОД) >= 2023',
       ru: 'с 2023 года',
-      en: 'since 2023 years'
+      en: 'since 2023 year'
     },
     {
       formula: 'ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5',
@@ -53,12 +53,12 @@ describe('Formula Translation', () => {
     {
       formula: 'ИЗВЛЕЧЬ(Период, ДЕНЬ) <= 15',
       ru: 'по 15 день',
-      en: 'by 15 days'
+      en: 'by 15 day'
     },
     {
       formula: 'ИЗВЛЕЧЬ(Период, ЧАС) > 12',
       ru: 'после 12 часа',
-      en: 'after 12 hours'
+      en: 'after 12 hour'
     },
 
     // Функции даты
@@ -84,12 +84,12 @@ describe('Formula Translation', () => {
     {
       formula: 'ИЗВЛЕЧЬ(Период, МЕСЯЦ) = 5 И ИЗВЛЕЧЬ(Период, ДЕНЬ) < 15',
       ru: 'Май и до 15 дня',
-      en: 'May and before 15 days'
+      en: 'May and before 15 day'
     },
     {
       formula: 'ИЗВЛЕЧЬ(Период, ГОД) = 2023 ИЛИ ИЗВЛЕЧЬ(Период, ГОД) = 2024',
       ru: '2023 год или 2024 год',
-      en: '2023 years or 2024 years'
+      en: '2023 year or 2024 year'
     },
 
     // Функция В (IN)
@@ -125,7 +125,7 @@ describe('Formula Translation', () => {
     {
       formula: 'В(ИЗВЛЕЧЬ(Период, ДЕНЬНЕДЕЛИ), 6, 7) И ИЗВЛЕЧЬ(Период, ЧАС) >= 9 И ИЗВЛЕЧЬ(Период, ЧАС) <= 18',
       ru: 'суббота-воскресенье и с 9 часа и по 18 час',
-      en: 'Saturday-Sunday and since 9 hours and by 18 hours'
+      en: 'Saturday-Sunday and since 9 hour and by 18 hour'
     },
     {
       formula: 'ИЗВЛЕЧЬ(Период, КВАРТАЛ) = 1 И В(ИЗВЛЕЧЬ(Период, МЕСЯЦ), 1, 2, 3)',
@@ -137,7 +137,7 @@ describe('Formula Translation', () => {
     {
       formula: 'ИЗВЛЕЧЬ(Период, СЕКУНДА) = 0',
       ru: '0 секунда',
-      en: '0 seconds'
+      en: '0 second'
     },
     {
       formula: 'ИЗВЛЕЧЬ(Период, ДЕНЬГОДА) = 100',
